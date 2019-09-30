@@ -174,76 +174,100 @@ public class DefaultTeam {
 		  
 		double budget = 1664.0;
 
-		TreeMap<Integer, ArrayList<ArrayList<Point>>> solutions = new TreeMap<Integer, ArrayList<ArrayList<Point>>>();
+		ArrayList<Point> alice = new ArrayList<Point>(); alice.add(maison);
+		ArrayList<Point> bob = new ArrayList<Point>(); bob.add(maison);
+		ArrayList<Point> cindy = new ArrayList<Point>(); cindy.add(maison);
+		ArrayList<Point> dave = new ArrayList<Point>(); dave.add(maison);
+		ArrayList<Point> eddy = new ArrayList<Point>(); eddy.add(maison);
+		
+		ArrayList<Point> unvisited = (ArrayList<Point>) points.clone();
+		unvisited.remove(maison);
+		
+		
+		// // Removing the points too far away
+		// for (Point p : unvisited) {
+		// 	if (p.distance(maison) >= budget/2) {
+		// 		unvisited.remove(p);
+		// 	}
+		// }
 
-		for (int alpha = 0; alpha < 72; alpha++) {
-    
-			ArrayList<Point> alice = new ArrayList<Point>(); alice.add(maison);
-			ArrayList<Point> bob = new ArrayList<Point>(); bob.add(maison);
-			ArrayList<Point> cindy = new ArrayList<Point>(); cindy.add(maison);
-			ArrayList<Point> dave = new ArrayList<Point>(); dave.add(maison);
-			ArrayList<Point> eddy = new ArrayList<Point>(); eddy.add(maison);
-			
-			ArrayList<Point> unvisited = (ArrayList<Point>) points.clone();
-			unvisited.remove(maison);
-			
-			
-			// // Removing the points too far away
-			// for (Point p : unvisited) {
-			// 	if (p.distance(maison) >= budget/2) {
-			// 		unvisited.remove(p);
-			// 	}
-			// }
-			
+		ArrayList<Integer> alphas = new ArrayList<>(Arrays.asList(0,72,144,216,288));
 
-			// Divide the space in 5 parts
-			ArrayList<Integer> alphas = new ArrayList<Integer>();
+		ArrayList<TreeMap<Double,Point>> pointScoresPerQuadrant = new ArrayList<TreeMap<Double,Point>>();
 
-			for (int i = 0; i < 5; i++) {
-				alphas.add((i*72)+alpha);
-			}
-
-			Map<Integer, ArrayList<Point>> div_points = new HashMap<>();
-			
-			for (Point p : unvisited) {
-				int quadrant = compute_quadrant(p, maison, alphas);
-				ArrayList<Point> res = div_points.putIfAbsent(quadrant, new ArrayList<Point>(Arrays.asList(p)));
-				if (res != null) {
-					res.add(p);
-					div_points.put(quadrant, res);
-				}
-			}
-
-			
-			// For each person find the total traversed path
-			alice = calculTSP(div_points.get(0), maison);
-			bob = calculTSP(div_points.get(1), maison);
-			cindy = calculTSP(div_points.get(2), maison);
-			dave = calculTSP(div_points.get(3), maison);
-			eddy = calculTSP(div_points.get(4), maison);
-			
-			
-			// // For each person, reduce it under the budget
-			alice = reduce_budget(alice, maison, budget);
-			bob = reduce_budget(bob, maison, budget);
-			cindy = reduce_budget(cindy, maison, budget);
-			dave = reduce_budget(dave, maison, budget);
-			eddy = reduce_budget(eddy, maison, budget);
-			
-			ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
-			result.add(alice);
-			result.add(bob);
-			result.add(cindy);
-			result.add(dave);
-			result.add(eddy);
-
-			int resultSize = 0;
-
-			for (int i = 0; i < result.size(); i++) resultSize += result.get(i).size();
-
-			solutions.put(resultSize, result);
+		for (int i = 0; i < 5; i++) {
+			pointScoresPerQuadrant.add(i, new TreeMap<>());
 		}
+
+		double weight1 = 0.9;
+		double weight2 = 1-weight1;
+		
+		for (Point p : unvisited) {
+			int quadrant = compute_quadrant(p, maison, alphas);
+			
+			int i=0;
+			for (TreeMap<Double,Point> tm: pointScoresPerQuadrant) {
+				tm.put((weight1/p.distance(maison) + weight2*(quadrant==i ? 1/p.distance(maison) : 0)), p);
+				i++;
+			}
+		}
+
+		HashMap<Point,Integer> deletedPoints = new HashMap<Point,Integer>();
+
+		boolean flag = false;
+
+		HashMap<Integer,ArrayList<Point>> div_points = new HashMap<Integer,ArrayList<Point>>();
+
+		while (!flag) {
+			for (int i = 0; (i < 5) && (!flag); i++) {
+				double highestScore = pointScoresPerQuadrant.get(i).lastKey();
+				Point mostEligiblePoint = pointScoresPerQuadrant.get(i).get(highestScore);
+				while (deletedPoints.containsKey(mostEligiblePoint)) {
+					pointScoresPerQuadrant.get(i).remove(highestScore);
+					highestScore = pointScoresPerQuadrant.get(i).lastKey();
+					mostEligiblePoint = pointScoresPerQuadrant.get(i).get(highestScore);
+				}
+				deletedPoints.put(mostEligiblePoint,1);
+				pointScoresPerQuadrant.get(i).remove(highestScore);
+				if (pointScoresPerQuadrant.get(i).isEmpty()) flag = true;
+
+				if (!div_points.containsKey(i)) {
+					div_points.put(i, new ArrayList<>());
+				}
+				div_points.get(i).add(mostEligiblePoint);
+			}
+		}
+
+		
+		// For each person find the total traversed path
+		alice = calculTSP(div_points.get(0), maison);
+		bob = calculTSP(div_points.get(1), maison);
+		cindy = calculTSP(div_points.get(2), maison);
+		dave = calculTSP(div_points.get(3), maison);
+		eddy = calculTSP(div_points.get(4), maison);
+		
+		
+		// // // For each person, reduce it under the budget
+		alice = reduce_budget(alice, maison, budget);
+		bob = reduce_budget(bob, maison, budget);
+		cindy = reduce_budget(cindy, maison, budget);
+		dave = reduce_budget(dave, maison, budget);
+		eddy = reduce_budget(eddy, maison, budget);
+		
+		ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
+		result.add(alice);
+		result.add(bob);
+		result.add(cindy);
+		result.add(dave);
+		result.add(eddy);
+
+		// ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
+		// result.add(div_points.get(0));
+		// result.add(div_points.get(1));
+		// result.add(div_points.get(2));
+		// result.add(div_points.get(3));
+		// result.add(div_points.get(4));
 	
-		return solutions.get(solutions.lastKey());
+		return result;
   	}
 }
