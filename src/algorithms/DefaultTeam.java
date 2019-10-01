@@ -112,58 +112,107 @@ public class DefaultTeam {
 	
 	private ArrayList<Point> reduce_budget(ArrayList<Point> points, Point maison, double budget) {
 		double currentCost = score(points);
-		double farthestDistance = 0.0;
-		double distance_a = 0.0;
-		double distance_b = 0.0;
-		double distance_x = 0.0;
 		Point pointToRemove;
-		int indexOfPointToRemove;
 
-		Point pointBefore = new Point();
-		Point pointAfter = new Point();
-
-		TreeMap<Double, ArrayList<Point>> heap = new TreeMap<>();
+		TreeMap<Double, ArrayList<Point>> costDecreaseHeap = new TreeMap<Double, ArrayList<Point>>();
+		TreeMap<Integer, Double> reverseCostDecreaseHeap = new TreeMap<Integer, Double>();
 
 		for (Point p: points) {
-			if (heap.containsKey(maison.distance(p))) heap.get(maison.distance(p)).add(p);
-			else heap.put(maison.distance(p), new ArrayList<Point>(Arrays.asList(p)));
+			int index = points.indexOf(p);
+
+			if (index == points.indexOf(maison)) continue;
+
+			Point pointBefore = points.get((index-1)%points.size());
+			Point pointAfter = points.get((index+1)%points.size());
+
+			double distance_a = p.distance(pointBefore);
+			double distance_b = p.distance(pointAfter);
+			double distance_x = pointBefore.distance(pointAfter);
+
+			double costDecrease = ((distance_a + distance_b) - distance_x);
+
+			if (costDecreaseHeap.containsKey(costDecrease)) costDecreaseHeap.get(costDecrease).add(p);
+			else costDecreaseHeap.put(costDecrease, new ArrayList<Point>(Arrays.asList(p)));
+
+			reverseCostDecreaseHeap.put(index,costDecrease);
 		}
 
 		while (currentCost > budget) {
-			farthestDistance = heap.lastKey();
-			if (heap.get(farthestDistance).size() > 1) {
-				pointToRemove = heap.get(farthestDistance).remove(0);
+			double mostCostDecrease = costDecreaseHeap.lastKey();
+			if (costDecreaseHeap.get(mostCostDecrease).size() > 1) {
+				pointToRemove = costDecreaseHeap.get(mostCostDecrease).remove(0);
 			}
 			else {
-				pointToRemove = heap.remove(farthestDistance).get(0);
+				pointToRemove = costDecreaseHeap.remove(mostCostDecrease).get(0);
 			}
 
-			indexOfPointToRemove = points.indexOf(pointToRemove);
-
-			if (indexOfPointToRemove == 0) break;
-
-			pointBefore = points.get((indexOfPointToRemove-1)%points.size());
-			pointAfter = points.get((indexOfPointToRemove+1)%points.size());
-
-			distance_a = points.get(indexOfPointToRemove).distance(pointBefore);
-			distance_b = points.get(indexOfPointToRemove).distance(pointAfter);
-			distance_x = pointBefore.distance(pointAfter);
-
-			currentCost -= ((distance_a + distance_b) - distance_x);
-
+			int indexOfPointToRemove = points.indexOf(pointToRemove);
 			points.remove(indexOfPointToRemove);
 
-			double old_score = currentCost +1;
-			
+			currentCost -= mostCostDecrease;
+
+			double old_score = currentCost + 1;
 			while (old_score > currentCost) {
 				points = improve(points);
 				
 				old_score = currentCost;
 				currentCost = score(points);
 			}			
+			
+			Point pointBefore = points.get((indexOfPointToRemove-1)%points.size());
+			Point pointAfter = points.get((indexOfPointToRemove+1)%points.size());
 
-			//currentCost = score(points);
+			double pointBeforeCostDecrease = reverseCostDecreaseHeap.get(indexOfPointToRemove-1);
+			double pointAfterCostDecrease = reverseCostDecreaseHeap.get(indexOfPointToRemove+1);
 
+			if (costDecreaseHeap.get(pointBeforeCostDecrease) != null) {
+				if (costDecreaseHeap.get(pointBeforeCostDecrease).size() > 1) {
+					costDecreaseHeap.get(pointBeforeCostDecrease).remove(costDecreaseHeap.get(pointBeforeCostDecrease).indexOf(pointBefore));
+				}
+				else {
+					costDecreaseHeap.remove(pointBeforeCostDecrease).get(0);
+				}
+			}
+
+			if (costDecreaseHeap.get(pointAfterCostDecrease) != null) {
+				if (costDecreaseHeap.get(pointAfterCostDecrease).size() > 1) {
+					costDecreaseHeap.get(pointAfterCostDecrease).remove(costDecreaseHeap.get(pointAfterCostDecrease).indexOf(pointAfter));
+				}
+				else {
+					costDecreaseHeap.remove(pointAfterCostDecrease).get(0);
+				}
+			}
+
+			reverseCostDecreaseHeap.remove(indexOfPointToRemove-1);
+			reverseCostDecreaseHeap.remove(indexOfPointToRemove+1);
+
+			Point pointBeforePointBefore = points.get((indexOfPointToRemove-1-1)%points.size());
+			Point pointAfterPointBefore = points.get((indexOfPointToRemove-1+1)%points.size());
+
+			double distance_a = pointBefore.distance(pointBeforePointBefore);
+			double distance_b = pointBefore.distance(pointAfterPointBefore);
+			double distance_x = pointBeforePointBefore.distance(pointAfterPointBefore);
+
+			double pointBeforeNewCostDecrease = ((distance_a + distance_b) - distance_x);
+
+			if (costDecreaseHeap.containsKey(pointBeforeNewCostDecrease)) costDecreaseHeap.get(pointBeforeNewCostDecrease).add(pointBefore);
+			else costDecreaseHeap.put(pointBeforeNewCostDecrease, new ArrayList<Point>(Arrays.asList(pointBefore)));
+
+			reverseCostDecreaseHeap.put(indexOfPointToRemove-1,pointBeforeNewCostDecrease);
+
+			Point pointBeforePointAfter = points.get((indexOfPointToRemove+1-1)%points.size());
+			Point pointAfterPointAfter = points.get((indexOfPointToRemove+1+1)%points.size());
+
+			distance_a = pointAfter.distance(pointBeforePointAfter);
+			distance_b = pointAfter.distance(pointAfterPointAfter);
+			distance_x = pointBeforePointAfter.distance(pointAfterPointAfter);
+
+			double pointAfterNewCostDecrease = ((distance_a + distance_b) - distance_x);
+
+			if (costDecreaseHeap.containsKey(pointAfterNewCostDecrease)) costDecreaseHeap.get(pointAfterNewCostDecrease).add(pointAfter);
+			else costDecreaseHeap.put(pointAfterNewCostDecrease, new ArrayList<Point>(Arrays.asList(pointAfter)));
+
+			reverseCostDecreaseHeap.put(indexOfPointToRemove+1,pointAfterNewCostDecrease);
 		}
 		
 		return points;
@@ -174,100 +223,76 @@ public class DefaultTeam {
 		  
 		double budget = 1664.0;
 
-		ArrayList<Point> alice = new ArrayList<Point>(); alice.add(maison);
-		ArrayList<Point> bob = new ArrayList<Point>(); bob.add(maison);
-		ArrayList<Point> cindy = new ArrayList<Point>(); cindy.add(maison);
-		ArrayList<Point> dave = new ArrayList<Point>(); dave.add(maison);
-		ArrayList<Point> eddy = new ArrayList<Point>(); eddy.add(maison);
-		
-		ArrayList<Point> unvisited = (ArrayList<Point>) points.clone();
-		unvisited.remove(maison);
-		
-		
-		// // Removing the points too far away
-		// for (Point p : unvisited) {
-		// 	if (p.distance(maison) >= budget/2) {
-		// 		unvisited.remove(p);
-		// 	}
-		// }
+		TreeMap<Integer, ArrayList<ArrayList<Point>>> solutions = new TreeMap<Integer, ArrayList<ArrayList<Point>>>();
 
-		ArrayList<Integer> alphas = new ArrayList<>(Arrays.asList(0,72,144,216,288));
-
-		ArrayList<TreeMap<Double,Point>> pointScoresPerQuadrant = new ArrayList<TreeMap<Double,Point>>();
-
-		for (int i = 0; i < 5; i++) {
-			pointScoresPerQuadrant.add(i, new TreeMap<>());
-		}
-
-		double weight1 = 0.9;
-		double weight2 = 1-weight1;
-		
-		for (Point p : unvisited) {
-			int quadrant = compute_quadrant(p, maison, alphas);
+		for (int alpha = 0; alpha < 72; alpha++) {
+    
+			ArrayList<Point> alice = new ArrayList<Point>(); alice.add(maison);
+			ArrayList<Point> bob = new ArrayList<Point>(); bob.add(maison);
+			ArrayList<Point> cindy = new ArrayList<Point>(); cindy.add(maison);
+			ArrayList<Point> dave = new ArrayList<Point>(); dave.add(maison);
+			ArrayList<Point> eddy = new ArrayList<Point>(); eddy.add(maison);
 			
-			int i=0;
-			for (TreeMap<Double,Point> tm: pointScoresPerQuadrant) {
-				tm.put((weight1/p.distance(maison) + weight2*(quadrant==i ? 1/p.distance(maison) : 0)), p);
-				i++;
+			ArrayList<Point> unvisited = (ArrayList<Point>) points.clone();
+			unvisited.remove(maison);
+			
+			
+			// // Removing the points too far away
+			// for (Point p : unvisited) {
+			// 	if (p.distance(maison) >= budget/2) {
+			// 		unvisited.remove(p);
+			// 	}
+			// }
+			
+
+			// Divide the space in 5 parts
+			ArrayList<Integer> alphas = new ArrayList<Integer>();
+
+			for (int i = 0; i < 5; i++) {
+				alphas.add((i*72)+alpha);
 			}
-		}
 
-		HashMap<Point,Integer> deletedPoints = new HashMap<Point,Integer>();
-
-		boolean flag = false;
-
-		HashMap<Integer,ArrayList<Point>> div_points = new HashMap<Integer,ArrayList<Point>>();
-
-		while (!flag) {
-			for (int i = 0; (i < 5) && (!flag); i++) {
-				double highestScore = pointScoresPerQuadrant.get(i).lastKey();
-				Point mostEligiblePoint = pointScoresPerQuadrant.get(i).get(highestScore);
-				while (deletedPoints.containsKey(mostEligiblePoint)) {
-					pointScoresPerQuadrant.get(i).remove(highestScore);
-					highestScore = pointScoresPerQuadrant.get(i).lastKey();
-					mostEligiblePoint = pointScoresPerQuadrant.get(i).get(highestScore);
+			Map<Integer, ArrayList<Point>> div_points = new HashMap<>();
+			
+			for (Point p : unvisited) {
+				int quadrant = compute_quadrant(p, maison, alphas);
+				ArrayList<Point> res = div_points.putIfAbsent(quadrant, new ArrayList<Point>(Arrays.asList(p)));
+				if (res != null) {
+					res.add(p);
+					div_points.put(quadrant, res);
 				}
-				deletedPoints.put(mostEligiblePoint,1);
-				pointScoresPerQuadrant.get(i).remove(highestScore);
-				if (pointScoresPerQuadrant.get(i).isEmpty()) flag = true;
-
-				if (!div_points.containsKey(i)) {
-					div_points.put(i, new ArrayList<>());
-				}
-				div_points.get(i).add(mostEligiblePoint);
 			}
+
+			
+			// For each person find the total traversed path
+			alice = calculTSP(div_points.get(0), maison);
+			bob = calculTSP(div_points.get(1), maison);
+			cindy = calculTSP(div_points.get(2), maison);
+			dave = calculTSP(div_points.get(3), maison);
+			eddy = calculTSP(div_points.get(4), maison);
+			
+			
+			// // For each person, reduce it under the budget
+			alice = reduce_budget(alice, maison, budget);
+			bob = reduce_budget(bob, maison, budget);
+			cindy = reduce_budget(cindy, maison, budget);
+			dave = reduce_budget(dave, maison, budget);
+			eddy = reduce_budget(eddy, maison, budget);
+			
+			ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
+			result.add(alice);
+			result.add(bob);
+			result.add(cindy);
+			result.add(dave);
+			result.add(eddy);
+
+			int resultSize = 0;
+
+			for (int i = 0; i < result.size(); i++) resultSize += result.get(i).size();
+
+			solutions.put(resultSize, result);
 		}
-
-		
-		// For each person find the total traversed path
-		alice = calculTSP(div_points.get(0), maison);
-		bob = calculTSP(div_points.get(1), maison);
-		cindy = calculTSP(div_points.get(2), maison);
-		dave = calculTSP(div_points.get(3), maison);
-		eddy = calculTSP(div_points.get(4), maison);
-		
-		
-		// // // For each person, reduce it under the budget
-		alice = reduce_budget(alice, maison, budget);
-		bob = reduce_budget(bob, maison, budget);
-		cindy = reduce_budget(cindy, maison, budget);
-		dave = reduce_budget(dave, maison, budget);
-		eddy = reduce_budget(eddy, maison, budget);
-		
-		ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
-		result.add(alice);
-		result.add(bob);
-		result.add(cindy);
-		result.add(dave);
-		result.add(eddy);
-
-		// ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
-		// result.add(div_points.get(0));
-		// result.add(div_points.get(1));
-		// result.add(div_points.get(2));
-		// result.add(div_points.get(3));
-		// result.add(div_points.get(4));
 	
-		return result;
+		return solutions.get(solutions.lastKey());
   	}
 }
