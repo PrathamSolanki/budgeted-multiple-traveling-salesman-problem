@@ -110,7 +110,7 @@ public class DefaultTeam {
 	}
 
 	
-	private ArrayList<Point> reduce_budget(ArrayList<Point> points, Point maison, double budget) {
+	private ArrayList<Point> reduce_budget(ArrayList<Point> points, Point maison, double budget, int perc) {
 		double currentCost = score(points);
 		int iter = 0;
 		int initialNumberPoints = points.size();
@@ -135,7 +135,7 @@ public class DefaultTeam {
 			int IndexOfPointToRemove = 1;
 			double mostCostDecrease = 0;
 
-			if (iter < 0.62*initialNumberPoints) {
+			if (iter < perc/100.0*initialNumberPoints) {
 				double farthestDistance = heap.lastKey();
 				if (heap.get(farthestDistance).size() > 1) {
 					pointToRemove = heap.get(farthestDistance).remove(0);
@@ -238,14 +238,21 @@ public class DefaultTeam {
 			cindy = calculTSP(div_points.get(2), maison);
 			dave = calculTSP(div_points.get(3), maison);
 			eddy = calculTSP(div_points.get(4), maison);
+
+			ArrayList<Point> alice_org = alice;
+			ArrayList<Point> bob_org = bob;
+			ArrayList<Point> cindy_org = cindy;
+			ArrayList<Point> dave_org = dave;
+			ArrayList<Point> eddy_org = eddy;
 			
 			
-			// // For each person, reduce it under the budget
-			alice = reduce_budget(alice, maison, budget);
-			bob = reduce_budget(bob, maison, budget);
-			cindy = reduce_budget(cindy, maison, budget);
-			dave = reduce_budget(dave, maison, budget);
-			eddy = reduce_budget(eddy, maison, budget);
+			for (int i = 1; i <= 99; i++) {
+				// // For each person, reduce it under the budget
+				alice = reduce_budget(alice_org, maison, budget, i);
+				bob = reduce_budget(bob_org, maison, budget, i);
+				cindy = reduce_budget(cindy_org, maison, budget, i);
+				dave = reduce_budget(dave_org, maison, budget, i);
+				eddy = reduce_budget(eddy_org, maison, budget, i);
 			
 			ArrayList<ArrayList<Point>> result = new ArrayList<ArrayList<Point>>();
 			result.add(alice);
@@ -256,9 +263,10 @@ public class DefaultTeam {
 
 			int resultSize = 0;
 
-			for (int i = 0; i < result.size(); i++) resultSize += result.get(i).size();
+			for (int j = 0; j < result.size(); j++) resultSize += result.get(j).size();
 
 			solutions.put(resultSize, result);
+			}
 		}
 	
 		return solutions.get(solutions.lastKey());
