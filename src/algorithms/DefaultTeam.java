@@ -113,6 +113,7 @@ public class DefaultTeam {
 	private ArrayList<Point> reduce_budget(ArrayList<Point> points, Point maison, double budget) {
 		double currentCost = score(points);
 		int iter = 0;
+		int initialNumberPoints = points.size();
 
 		TreeMap<Double, ArrayList<Point>> heap = new TreeMap<>();
 
@@ -134,7 +135,7 @@ public class DefaultTeam {
 			int IndexOfPointToRemove = 1;
 			double mostCostDecrease = 0;
 
-			if (iter < 0.9*points.size()) {
+			if (iter < 0.62*initialNumberPoints) {
 				double farthestDistance = heap.lastKey();
 				if (heap.get(farthestDistance).size() > 1) {
 					pointToRemove = heap.get(farthestDistance).remove(0);
