@@ -111,107 +111,17 @@ public class DefaultTeam {
 
 	
 	private ArrayList<Point> reduce_budget(ArrayList<Point> points, Point maison, double budget) {
-		TreeMap<Double, ArrayList<Point>> costDecreaseHeap = new TreeMap<Double, ArrayList<Point>>();
-		HashMap<Point, Double> reverseCostDecreaseHeap = new HashMap<Point, Double>();
+		double currentCost = score(points);
+		int iter = 0;
+
+		TreeMap<Double, ArrayList<Point>> heap = new TreeMap<>();
 
 		for (Point p: points) {
-			int index = points.indexOf(p);
-
-			if (index == points.indexOf(maison)) continue;
-
-			Point pointBefore = points.get((index-1)%points.size());
-			Point pointAfter = points.get((index+1)%points.size());
-
-			double distance_a = p.distance(pointBefore);
-			double distance_b = p.distance(pointAfter);
-			double distance_x = pointBefore.distance(pointAfter);
-
-			double costDecrease = ((distance_a + distance_b) - distance_x);
-
-			if (costDecreaseHeap.containsKey(costDecrease)) costDecreaseHeap.get(costDecrease).add(p);
-			else costDecreaseHeap.put(costDecrease, new ArrayList<Point>(Arrays.asList(p)));
-
-			reverseCostDecreaseHeap.put(p,costDecrease);
+			if (heap.containsKey(maison.distance(p))) heap.get(maison.distance(p)).add(p);
+			else heap.put(maison.distance(p), new ArrayList<Point>(Arrays.asList(p)));
 		}
-
-		double currentCost = score(points);
+		
 		while (currentCost > budget) {
-			Point pointToRemove;
-			double mostCostDecrease = costDecreaseHeap.lastKey();
-			if (costDecreaseHeap.get(mostCostDecrease).size() > 1) {
-				pointToRemove = costDecreaseHeap.get(mostCostDecrease).remove(0);
-			}
-			else {
-				pointToRemove = costDecreaseHeap.remove(mostCostDecrease).get(0);
-			}
-
-			int indexOfPointToRemove = points.indexOf(pointToRemove);			
-			
-			Point pointBefore = points.get((indexOfPointToRemove-1)%points.size());
-			Point pointAfter = points.get((indexOfPointToRemove+1)%points.size());
-
-			if (pointBefore != maison) {
-				double pointBeforeCostDecrease = reverseCostDecreaseHeap.get(pointBefore);
-	
-				if (costDecreaseHeap.get(pointBeforeCostDecrease) != null) {
-					if (costDecreaseHeap.get(pointBeforeCostDecrease).size() > 1) {
-						costDecreaseHeap.get(pointBeforeCostDecrease).remove(costDecreaseHeap.get(pointBeforeCostDecrease).indexOf(pointBefore));
-					}
-					else {
-						costDecreaseHeap.remove(pointBeforeCostDecrease);
-					}
-				}
-	
-				reverseCostDecreaseHeap.remove(pointBefore);
-
-				Point pointBeforePointBefore = points.get((indexOfPointToRemove-1-1)%points.size());
-				Point pointAfterPointBefore = points.get((indexOfPointToRemove+1)%points.size());
-
-				double distance_a = pointBefore.distance(pointBeforePointBefore);
-				double distance_b = pointBefore.distance(pointAfterPointBefore);
-				double distance_x = pointBeforePointBefore.distance(pointAfterPointBefore);
-
-				double pointBeforeNewCostDecrease = ((distance_a + distance_b) - distance_x);
-
-				if (costDecreaseHeap.containsKey(pointBeforeNewCostDecrease)) costDecreaseHeap.get(pointBeforeNewCostDecrease).add(pointBefore);
-				else costDecreaseHeap.put(pointBeforeNewCostDecrease, new ArrayList<Point>(Arrays.asList(pointBefore)));
-
-				reverseCostDecreaseHeap.put(pointBefore,pointBeforeNewCostDecrease);
-			}
-
-			if (pointAfter != maison) {
-				double pointAfterCostDecrease = reverseCostDecreaseHeap.get(pointAfter);
-	
-				if (costDecreaseHeap.get(pointAfterCostDecrease) != null) {
-					if (costDecreaseHeap.get(pointAfterCostDecrease).size() > 1) {
-						costDecreaseHeap.get(pointAfterCostDecrease).remove(costDecreaseHeap.get(pointAfterCostDecrease).indexOf(pointAfter));
-					}
-					else {
-						costDecreaseHeap.remove(pointAfterCostDecrease);
-					}
-				}
-	
-				reverseCostDecreaseHeap.remove(pointAfter);
-
-				Point pointBeforePointAfter = points.get((indexOfPointToRemove-1)%points.size());
-				Point pointAfterPointAfter = points.get((indexOfPointToRemove+1+1)%points.size());
-
-				double distance_a = pointAfter.distance(pointBeforePointAfter);
-				double distance_b = pointAfter.distance(pointAfterPointAfter);
-				double distance_x = pointBeforePointAfter.distance(pointAfterPointAfter);
-
-				double pointAfterNewCostDecrease = ((distance_a + distance_b) - distance_x);
-
-				if (costDecreaseHeap.containsKey(pointAfterNewCostDecrease)) costDecreaseHeap.get(pointAfterNewCostDecrease).add(pointAfter);
-				else costDecreaseHeap.put(pointAfterNewCostDecrease, new ArrayList<Point>(Arrays.asList(pointAfter)));
-
-				reverseCostDecreaseHeap.put(pointAfter,pointAfterNewCostDecrease);
-			}
-
-			points.remove(indexOfPointToRemove);
-
-			currentCost -= mostCostDecrease;
-
 			double old_score = currentCost + 1;
 			while (old_score > currentCost) {
 				points = improve(points);
@@ -219,6 +129,57 @@ public class DefaultTeam {
 				old_score = currentCost;
 				currentCost = score(points);
 			}
+
+			Point pointToRemove;
+			int IndexOfPointToRemove = 1;
+			double mostCostDecrease = 0;
+
+			if (iter < 0.9*points.size()) {
+				double farthestDistance = heap.lastKey();
+				if (heap.get(farthestDistance).size() > 1) {
+					pointToRemove = heap.get(farthestDistance).remove(0);
+				}
+				else {
+					pointToRemove = heap.remove(farthestDistance).get(0);
+				}
+	
+				IndexOfPointToRemove = points.indexOf(pointToRemove);
+
+				Point pointBefore = points.get((IndexOfPointToRemove-1)%points.size());
+				Point pointAfter = points.get((IndexOfPointToRemove+1)%points.size());
+	
+				double distance_a = points.get(IndexOfPointToRemove).distance(pointBefore);
+				double distance_b = points.get(IndexOfPointToRemove).distance(pointAfter);
+				double distance_x = pointBefore.distance(pointAfter);
+	
+				mostCostDecrease = ((distance_a + distance_b) - distance_x);
+			}
+			else {
+				for (Point p: points) {
+					int index = points.indexOf(p);
+		
+					if (index == points.indexOf(maison)) continue;
+		
+					Point pointBefore = points.get((index-1)%points.size());
+					Point pointAfter = points.get((index+1)%points.size());
+		
+					double distance_a = p.distance(pointBefore);
+					double distance_b = p.distance(pointAfter);
+					double distance_x = pointBefore.distance(pointAfter);
+		
+					double costDecrease = ((distance_a + distance_b) - distance_x);
+
+					if (costDecrease > mostCostDecrease) {
+						IndexOfPointToRemove = index;
+						mostCostDecrease = costDecrease;
+					}
+				}
+			}
+
+			points.remove(IndexOfPointToRemove);
+
+			currentCost -= mostCostDecrease;
+			iter++;
 		}
 		
 		return points;
